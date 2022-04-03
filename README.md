@@ -5,8 +5,7 @@ it is written in Rust and zsh script.
 
 # install
 1. Download git-prompt.sh and gitstatus 
-2. In gitstatus, do command ```cargo run```
-3. Source git-prompt.sh from your .zshrc config file
+2. Source git-prompt.sh from your .zshrc config file
 ```
 source {path/to/git-prompt.sh}
 function precmd {
