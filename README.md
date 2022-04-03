@@ -13,5 +13,3 @@ PROMPT="%F{green}kons@%m: %F{yellow}%~%f
 $(git_PS "%s ")%F{white}$%f "
 }
 ```
-
-I refer to https://github.com/olivierverdier/zsh-git-prompt , it is written in python.
