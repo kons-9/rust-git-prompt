@@ -73,7 +73,6 @@ fn exist_git() -> Result<Option<String>, InvalidGitError> {
     let (err, exist_git) = (exist_git.stderr, exist_git.stdout);
     let exist_git = String::from_utf8(exist_git).unwrap();
     let err = String::from_utf8(err).unwrap();
-    // println!("{}", exist_git);
 
     if Regex::new(r"fatal: Not a git repository")
         .unwrap()

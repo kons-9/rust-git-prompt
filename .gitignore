@@ -1,1 +1,7 @@
-gitstatus/target
+*
+!*/
+
+!/gitstatus/target/release/gitstatus
+!/gitstatus/*
+!/gitstatus/src/*
+!/*
