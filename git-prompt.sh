@@ -1,5 +1,7 @@
 #!/bin/zsh
 setopt PROMPT_SUBST
+setopt PROMPT_PERCENT
+
 autoload -Uz colors: colors
 
 # git prompt for zsh
