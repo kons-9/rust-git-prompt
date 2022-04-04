@@ -15,6 +15,8 @@ const GIT_PROMPT_AHEAD: &str = r"%{↑%G%}";
 const GIT_PROMPT_UNTRACKED: &str = r"%{?%G%}";
 const RESET: &str = r"${reset_color}";
 const DEFAULT_OUTPUT: &str = r"%s ";
+
+// OP:color:symbol:bold
 // const DEFAULT_STATUS: &str = "PR:white:(: BR:magenta:: BE::: AH::: SE:white:| ";
 
 // if you want to use escape color
@@ -30,7 +32,6 @@ const DEFAULT_OUTPUT: &str = r"%s ";
 // const GIT_PROMPT_UNTRACKED: &str = r"%{?%G%}";
 // const RESET: &str = r"\e[m";
 // const DEFAULT_OUTPUT: &str = r"%s ";
-// OP:color:symbol:bold
 
 #[derive(Debug, Clone)]
 struct InvalidGitError {
@@ -47,14 +48,14 @@ impl std::error::Error for InvalidGitError {}
 type FileSize = u64;
 
 fn main() {
-    let (branch, (ahead, behind)) = match exist_git() {
-        Ok(Some(str)) => (str, (0, 0)),
-        Ok(None) => ("none".to_string(), no_branch()),
+    let branch = match exist_git() {
+        Ok(str) => (str),
         Err(_) => {
             print!("");
             return;
         }
     };
+    let (ahead, behind) = (0, 0);
 
     let change = match change_git() {
         Ok(strs) => strs,
@@ -109,17 +110,10 @@ fn print_all(
     {
         return;
     }
-    let args: Vec<String> = env::args().collect();
-    let output_format = if args.len() >= 2 {
-        &args[1]
-    } else {
-        DEFAULT_OUTPUT
-    };
 
-    let mut status: String = String::new();
-    status = format!(
-        "{}{}{}{}{}",
-        status, GIT_PROMPT_PREFIX, GIT_PROMPT_BRANCH, branch, RESET
+    let mut status = format!(
+        "{}{}{}{}",
+        GIT_PROMPT_PREFIX, GIT_PROMPT_BRANCH, branch, RESET
     );
     if behind != 0 {
         status = format!("{}{}{}{}", status, GIT_PROMPT_BEHIND, behind, RESET);
@@ -148,13 +142,20 @@ fn print_all(
         }
         format!("{}{}", status, GIT_PROMPT_SUFFIX)
     };
+
+    let args: Vec<String> = env::args().collect();
+    let output_format = if args.len() >= 2 {
+        &args[1]
+    } else {
+        DEFAULT_OUTPUT
+    };
     print!(r"{}", output_format.replace("%s", &status));
 }
 
 #[inline(always)]
-fn exist_git() -> Result<Option<String>, InvalidGitError> {
+fn exist_git() -> Result<String, InvalidGitError> {
     let exist_git = Command::new("git")
-        .args(&["symbolic-ref", "HEAD"])
+        .args(&["rev-parse", "--abbrev-ref", "@"])
         .output()
         .unwrap();
     let (err, exist_git) = (exist_git.stderr, exist_git.stdout);
@@ -169,23 +170,26 @@ fn exist_git() -> Result<Option<String>, InvalidGitError> {
             message: "No".to_string(),
         });
     }
-    if exist_git.len() >= 11 {
-        let branch_git = &exist_git[11..(exist_git.len() - 1)];
-        Ok(Some(branch_git.to_string()))
+    if exist_git.len() == 0 {
+        let exist_git = Command::new("git")
+            .args(&["rev-parse", "--short", "HEAD"])
+            .output()
+            .unwrap()
+            .stdout;
+        let exist_git = String::from_utf8(exist_git).unwrap();
+        if exist_git.len() == 0 {
+            return Err(InvalidGitError {
+                message: "No".to_string(),
+            });
+        }
+        Ok(exist_git)
     } else {
-        Ok(None)
+        Ok(exist_git)
     }
 }
 
 #[inline(always)]
-fn no_branch() -> (FileSize, FileSize) {
-    //#Todo
-    (0, 0)
-}
-
-#[inline(always)]
 fn change_git() -> Result<FileSize, InvalidGitError> {
-    // #Todo
     let change_file = Command::new("git")
         .args(&["diff", "--name-status"])
         .output()
@@ -208,7 +212,6 @@ fn change_git() -> Result<FileSize, InvalidGitError> {
 
 #[inline(always)]
 fn staged_git() -> Result<(FileSize, FileSize), InvalidGitError> {
-    // #Todo
     let staged_file = Command::new("git")
         .args(&["diff", "--staged", "--name-status"])
         .output()
@@ -231,7 +234,6 @@ fn staged_git() -> Result<(FileSize, FileSize), InvalidGitError> {
 
 #[inline(always)]
 fn untracked_git() -> Result<FileSize, InvalidGitError> {
-    // #Todo
     let untracked_file = Command::new("git")
         .args(&["status", "--porcelain"])
         .output()
