@@ -3,35 +3,35 @@ use std::env;
 use std::fmt;
 use std::process::Command;
 
-const GIT_PROMPT_PREFIX: &str = "(";
-const GIT_PROMPT_SUFFIX: &str = ")";
-const GIT_PROMPT_SEPARATOR: &str = "|";
-const GIT_PROMPT_BRANCH: &str = r"%{$fg[magenta]%}";
-const GIT_PROMPT_STAGED: &str = r"%{$fg[red]%}%{●%G%}";
-const GIT_PROMPT_CONFLICTS: &str = r"%{$fg_bold[red]%}%{✖%G%}";
-const GIT_PROMPT_CHANGED: &str = r"%{$fg[blue]%}%{✚%G%}";
-const GIT_PROMPT_BEHIND: &str = r"%{↓%G%}";
-const GIT_PROMPT_AHEAD: &str = r"%{↑%G%}";
-const GIT_PROMPT_UNTRACKED: &str = r"%{?%G%}";
-const RESET: &str = r"${reset_color}";
-const DEFAULT_OUTPUT: &str = r"%s ";
+// const GIT_PROMPT_PREFIX: &str = "(";
+// const GIT_PROMPT_SUFFIX: &str = ")";
+// const GIT_PROMPT_SEPARATOR: &str = "|";
+// const GIT_PROMPT_BRANCH: &str = r"%{$fg[magenta]%}";
+// const GIT_PROMPT_STAGED: &str = r"%{$fg[red]%}%{●%G%}";
+// const GIT_PROMPT_CONFLICTS: &str = r"%{$fg_bold[red]%}%{✖%G%}";
+// const GIT_PROMPT_CHANGED: &str = r"%{$fg[blue]%}%{✚%G%}";
+// const GIT_PROMPT_BEHIND: &str = r"%{↓%G%}";
+// const GIT_PROMPT_AHEAD: &str = r"%{↑%G%}";
+// const GIT_PROMPT_UNTRACKED: &str = r"%{?%G%}";
+// const RESET: &str = r"%{${reset_color}%}";
+// const DEFAULT_OUTPUT: &str = r"%s ";
 
 // OP:color:symbol:bold
 // const DEFAULT_STATUS: &str = "PR:white:(: BR:magenta:: BE::: AH::: SE:white:| ";
 
 // if you want to use escape color
-// const GIT_PROMPT_PREFIX: &str = "(";
-// const GIT_PROMPT_SUFFIX: &str = ")";
-// const GIT_PROMPT_SEPARATOR: &str = "|";
-// const GIT_PROMPT_BRANCH: &str = r"\e[35m";
-// const GIT_PROMPT_STAGED: &str = r"\e[31m%{●%G%}";
-// const GIT_PROMPT_CONFLICTS: &str = r"\e[31m{✖%G%}";
-// const GIT_PROMPT_CHANGED: &str = r"\e[34m%{✚%G%}";
-// const GIT_PROMPT_BEHIND: &str = r"%{↓%G%}";
-// const GIT_PROMPT_AHEAD: &str = r"%{↑%G%}";
-// const GIT_PROMPT_UNTRACKED: &str = r"%{?%G%}";
-// const RESET: &str = r"\e[m";
-// const DEFAULT_OUTPUT: &str = r"%s ";
+const GIT_PROMPT_PREFIX: &str = "(";
+const GIT_PROMPT_SUFFIX: &str = ")";
+const GIT_PROMPT_SEPARATOR: &str = "|";
+const GIT_PROMPT_BRANCH: &str = r"%{\e[35m%}";
+const GIT_PROMPT_STAGED: &str = r"%{\e[31m%}%{●%G%}";
+const GIT_PROMPT_CONFLICTS: &str = r"%{\e[31m%}{✖%G%}";
+const GIT_PROMPT_CHANGED: &str = r"%{\e[34m%}%{✚%G%}";
+const GIT_PROMPT_BEHIND: &str = r"%{↓%G%}";
+const GIT_PROMPT_AHEAD: &str = r"%{↑%G%}";
+const GIT_PROMPT_UNTRACKED: &str = r"%{?%G%}";
+const RESET: &str = r"%{\e[m%}";
+const DEFAULT_OUTPUT: &str = r"%s ";
 
 #[derive(Debug, Clone)]
 struct InvalidGitError {
@@ -159,7 +159,8 @@ fn exist_git() -> Result<String, InvalidGitError> {
         .output()
         .unwrap();
     let (err, exist_git) = (exist_git.stderr, exist_git.stdout);
-    let exist_git = String::from_utf8(exist_git).unwrap();
+    let mut exist_git = String::from_utf8(exist_git).unwrap();
+    exist_git.pop();
     let err = String::from_utf8(err).unwrap();
 
     if Regex::new(r"fatal: Not a git repository")
