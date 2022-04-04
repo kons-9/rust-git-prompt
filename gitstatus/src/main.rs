@@ -1,11 +1,41 @@
 use regex::Regex;
+use std::env;
 use std::fmt;
 use std::process::Command;
+
+const GIT_PROMPT_PREFIX: &str = "(";
+const GIT_PROMPT_SUFFIX: &str = ")";
+const GIT_PROMPT_SEPARATOR: &str = "|";
+const GIT_PROMPT_BRANCH: &str = r"%{$fg[magenta]%}";
+const GIT_PROMPT_STAGED: &str = r"%{$fg[red]%}%{●%G%}";
+const GIT_PROMPT_CONFLICTS: &str = r"%{$fg_bold[red]%}%{✖%G%}";
+const GIT_PROMPT_CHANGED: &str = r"%{$fg[blue]%}%{✚%G%}";
+const GIT_PROMPT_BEHIND: &str = r"%{↓%G%}";
+const GIT_PROMPT_AHEAD: &str = r"%{↑%G%}";
+const GIT_PROMPT_UNTRACKED: &str = r"%{?%G%}";
+const RESET: &str = r"${reset_color}";
+const DEFAULT_OUTPUT: &str = r"%s ";
+// const DEFAULT_STATUS: &str = "PR:white:(: BR:magenta:: BE::: AH::: SE:white:| ";
+
+// const GIT_PROMPT_PREFIX: &str = "(";
+// const GIT_PROMPT_SUFFIX: &str = ")";
+// const GIT_PROMPT_SEPARATOR: &str = "|";
+// const GIT_PROMPT_BRANCH: &str = r"\e[35m";
+// const GIT_PROMPT_STAGED: &str = r"\e[31m%{●%G%}";
+// const GIT_PROMPT_CONFLICTS: &str = r"\e[31m{✖%G%}";
+// const GIT_PROMPT_CHANGED: &str = r"\e[34m%{✚%G%}";
+// const GIT_PROMPT_BEHIND: &str = r"%{↓%G%}";
+// const GIT_PROMPT_AHEAD: &str = r"%{↑%G%}";
+// const GIT_PROMPT_UNTRACKED: &str = r"%{?%G%}";
+// const RESET: &str = r"\e[m";
+// const DEFAULT_OUTPUT: &str = r"%s ";
+// OP:color:symbol:bold
 
 #[derive(Debug, Clone)]
 struct InvalidGitError {
     message: String,
 }
+
 impl fmt::Display for InvalidGitError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "{}", self.message)
@@ -13,19 +43,14 @@ impl fmt::Display for InvalidGitError {
 }
 impl std::error::Error for InvalidGitError {}
 
+type FileSize = u64;
+
 fn main() {
-    let ahead_behind;
-    let branch = match exist_git() {
-        Ok(Some(str)) => {
-            ahead_behind = "0 0".to_string();
-            str
-        }
-        Ok(None) => {
-            ahead_behind = no_branch();
-            "none".to_string()
-        }
+    let (branch, (ahead, behind)) = match exist_git() {
+        Ok(Some(str)) => (str, (0, 0)),
+        Ok(None) => ("none".to_string(), no_branch()),
         Err(_) => {
-            print_none();
+            print!("");
             return;
         }
     };
@@ -33,38 +58,99 @@ fn main() {
     let change = match change_git() {
         Ok(strs) => strs,
         Err(_) => {
-            print_none();
+            print!("");
             return;
         }
     };
     let (staged, conflicts) = match staged_git() {
         Ok(strs) => strs,
         Err(_) => {
-            print_none();
+            print!("");
             return;
         }
     };
     let untracked_git = match untracked_git() {
         Ok(str) => str,
         Err(_) => {
-            print_none();
+            print!("");
             return;
         }
     };
-    if branch == "none" {
-        print_none();
-    } else {
-        print!(
-            "{} {} {} {} {} {} TRUE",
-            branch, ahead_behind, staged, conflicts, change, untracked_git
-        );
+
+    print_all(
+        branch,
+        ahead,
+        behind,
+        staged,
+        conflicts,
+        change,
+        untracked_git,
+    );
+}
+
+#[inline(always)]
+fn print_all(
+    branch: String,
+    ahead: FileSize,
+    behind: FileSize,
+    staged: FileSize,
+    conflicts: FileSize,
+    change: FileSize,
+    untracked_git: FileSize,
+) {
+    if branch == "none"
+        && ahead == 0
+        && behind == 0
+        && staged == 0
+        && conflicts == 0
+        && change == 0
+        && untracked_git == 0
+    {
+        return;
     }
+    let args: Vec<String> = env::args().collect();
+    let output_format = if args.len() >= 2 {
+        &args[1]
+    } else {
+        DEFAULT_OUTPUT
+    };
+
+    let mut status: String = String::new();
+    status = format!(
+        "{}{}{}{}{}",
+        status, GIT_PROMPT_PREFIX, GIT_PROMPT_BRANCH, branch, RESET
+    );
+    if behind != 0 {
+        status = format!("{}{}{}{}", status, GIT_PROMPT_BEHIND, behind, RESET);
+    }
+    if ahead != 0 {
+        status = format!("{}{}{}{}", status, GIT_PROMPT_AHEAD, ahead, RESET);
+    }
+    status = if staged == 0 && conflicts == 0 && change == 0 && untracked_git == 0 {
+        format!("{}{}", status, GIT_PROMPT_SUFFIX)
+    } else {
+        status = status + GIT_PROMPT_SEPARATOR;
+        if staged != 0 {
+            status = format!("{}{}{}{}", status, GIT_PROMPT_STAGED, staged, RESET);
+        }
+        if conflicts != 0 {
+            status = format!("{}{}{}{}", status, GIT_PROMPT_CONFLICTS, conflicts, RESET);
+        }
+        if change != 0 {
+            status = format!("{}{}{}{}", status, GIT_PROMPT_CHANGED, change, RESET);
+        }
+        if untracked_git != 0 {
+            status = format!(
+                "{}{}{}{}",
+                status, GIT_PROMPT_UNTRACKED, untracked_git, RESET
+            );
+        }
+        format!("{}{}", status, GIT_PROMPT_SUFFIX)
+    };
+    print!(r"{}", output_format.replace("%s", &status));
 }
 
-fn print_none() {
-    print!("none 0 0 0 0 0 0 FALSE");
-}
-
+#[inline(always)]
 fn exist_git() -> Result<Option<String>, InvalidGitError> {
     let exist_git = Command::new("git")
         .args(&["symbolic-ref", "HEAD"])
@@ -90,12 +176,14 @@ fn exist_git() -> Result<Option<String>, InvalidGitError> {
     }
 }
 
-fn no_branch() -> String {
+#[inline(always)]
+fn no_branch() -> (FileSize, FileSize) {
     //#Todo
-    "0 0".to_string()
+    (0, 0)
 }
 
-fn change_git() -> Result<String, InvalidGitError> {
+#[inline(always)]
+fn change_git() -> Result<FileSize, InvalidGitError> {
     // #Todo
     let change_file = Command::new("git")
         .args(&["diff", "--name-status"])
@@ -114,9 +202,11 @@ fn change_git() -> Result<String, InvalidGitError> {
         }
     }
 
-    Ok((cnt_line - cnt_u).to_string())
+    Ok(cnt_line - cnt_u)
 }
-fn staged_git() -> Result<(String, String), InvalidGitError> {
+
+#[inline(always)]
+fn staged_git() -> Result<(FileSize, FileSize), InvalidGitError> {
     // #Todo
     let staged_file = Command::new("git")
         .args(&["diff", "--staged", "--name-status"])
@@ -135,9 +225,11 @@ fn staged_git() -> Result<(String, String), InvalidGitError> {
         }
     }
 
-    Ok(((cnt_line - cnt_u).to_string(), cnt_u.to_string()))
+    Ok(((cnt_line - cnt_u), cnt_u))
 }
-fn untracked_git() -> Result<String, InvalidGitError> {
+
+#[inline(always)]
+fn untracked_git() -> Result<FileSize, InvalidGitError> {
     // #Todo
     let untracked_file = Command::new("git")
         .args(&["status", "--porcelain"])
@@ -147,11 +239,11 @@ fn untracked_git() -> Result<String, InvalidGitError> {
     let untracked_file = String::from_utf8(untracked_file).unwrap();
     let _ = String::from_utf8(err).unwrap();
 
-    let mut count: usize = 0;
+    let mut count: FileSize = 0;
     for file in untracked_file.lines() {
         if file.chars().nth(0).unwrap() == '?' && file.chars().nth(1).unwrap() == '?' {
             count += 1;
         }
     }
-    return Ok(count.to_string());
+    return Ok(count);
 }
