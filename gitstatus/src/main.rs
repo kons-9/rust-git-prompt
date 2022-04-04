@@ -17,6 +17,7 @@ const RESET: &str = r"${reset_color}";
 const DEFAULT_OUTPUT: &str = r"%s ";
 // const DEFAULT_STATUS: &str = "PR:white:(: BR:magenta:: BE::: AH::: SE:white:| ";
 
+// if you want to use escape color
 // const GIT_PROMPT_PREFIX: &str = "(";
 // const GIT_PROMPT_SUFFIX: &str = ")";
 // const GIT_PROMPT_SEPARATOR: &str = "|";

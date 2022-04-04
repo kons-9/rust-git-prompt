@@ -1,4 +1,7 @@
 #!/bin/zsh
+setopt PROMPT_SUBST
+autoload -Uz colors: colors
+
 # git prompt for zsh
 export __GIT_DIR=${0:A:h}
 
